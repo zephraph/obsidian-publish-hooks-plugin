@@ -1,0 +1,16 @@
+{
+  "name": "obsidian-publish-hooks-plugin",
+  "version": "0.0.1",
+  "description": "A plugin to give you programmatic hooks into obsidian's plugin system",
+  "main": "lib/main.js",
+  "license": "MIT",
+  "scripts": {
+    "build": "obsidian-plugin build src/main.ts",
+    "dev": "obsidian-plugin dev src/main.ts"
+  },
+  "devDependencies": {
+    "typescript": "^4.1.5",
+    "obsidian-plugin-cli": "^0.4.3",
+    "obsidian": "obsidianmd/obsidian-api"
+  }
+}

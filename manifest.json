@@ -1,0 +1,8 @@
+{
+  "id": "publish-hooks",
+  "name": "Publish hooks",
+  "description": "A plugin to give you programmatic hooks into obsidian's plugin system",
+  "author": "zephraph",
+  "minAppVersion": "0.11.0",
+  "version": "0.0.1"
+}
