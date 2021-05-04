@@ -1,0 +1,14 @@
+diff --git a/node_modules/monkey-around/index.d.ts b/node_modules/monkey-around/index.d.ts
+index f4fbbf3..4dbb915 100644
+--- a/node_modules/monkey-around/index.d.ts
++++ b/node_modules/monkey-around/index.d.ts
+@@ -1,7 +1,7 @@
+ declare type uninstaller = () => void;
+ declare type methodWrapperFactory<T extends Function> = (next: T) => T;
+-export declare function around<T extends Function>(obj: Object, factories: {
+-    [key: string]: methodWrapperFactory<T>;
++export declare function around<O extends Record<string, any>>(obj: O, factories: {
++    [key in keyof O]: methodWrapperFactory<O[key]>;
+ }): uninstaller;
+ export declare function after(promise: Promise<any>, cb: () => void): Promise<void>;
+ export declare function serialize(asyncFunction: Function): {

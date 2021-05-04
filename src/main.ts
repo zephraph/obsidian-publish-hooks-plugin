@@ -1,99 +1,58 @@
-import {
-  App,
-  Modal,
-  Notice,
-  Plugin,
-  PluginSettingTab,
-  Setting,
-} from "obsidian";
-interface PublishHooksSettings {
-  mySetting: string;
-}
-const DEFAULT_SETTINGS: PublishHooksSettings = {
-  mySetting: "default",
-};
+import { Plugin } from "obsidian";
+import { around } from "monkey-around";
+
+const NS = "publish-hooks";
+type VALID_EVENT = 'pre-publish' | 'post-publish' | 'intercept-upload'
+
+const event = (name: VALID_EVENT) => `${NS}:${name}`
+
 export default class PublishHooks extends Plugin {
-  settings: PublishHooksSettings;
-  async onload() {
-    console.log("loading plugin");
-    await this.loadSettings();
-    this.addRibbonIcon("dice", "Sample Plugin", () => {
-      new Notice("This is a notice!");
-    });
-    this.addStatusBarItem().setText("Status Bar Text");
-    this.addCommand({
-      id: "open-sample-modal",
-      name: "Open Sample Modal",
-      // callback: () => {
-      // 	console.log('Simple Callback');
-      // },
-      checkCallback: (checking: boolean) => {
-        let leaf = this.app.workspace.activeLeaf;
-        if (leaf) {
-          if (!checking) {
-            new SampleModal(this.app).open();
+  private whenReady() {
+    if (!this.app.internalPlugins.plugins.publish) {
+      console.error(`[${NS}] Publish plugin not found`);
+      return;
+    }
+
+    const workspace = this.app.workspace;
+    const publishPlugin = this.app.internalPlugins.plugins.publish.instance;
+
+    const uninstall = around(publishPlugin, {
+      apiRequest: (baseApiRequest) =>
+        async function publishHooksPatched_apiRequest(this: unknown, ...args) {
+          const params = args[0];
+          if (params?.url?.endsWith("/api/upload")) {
+            const updates = []
+            workspace.trigger(event('intercept-upload'), function queueUpdate(doUpdate: (file: string, content: string ) => string) {
+              updates.push(doUpdate)
+            });
+            // sleep
+            // decodeData
+            // doUpdates
+            // encodeData
+            // upload
+          } else {
+            return baseApiRequest.apply(this, args);
           }
-          return true;
-        }
-        return false;
-      },
+        },
+      apiUploadFile: (baseApiUploadFile) =>
+        async function publishHooksPatched_apiUploadFile(this: unknown, ...args) {
+          const path = args[0]?.path;
+          if (!path) {
+            console.error(
+              `[${NS}]: Path wasn't found when calling apiUploadFile, the internal API may have changed.`
+            );
+            return baseApiUploadFile.apply(this, args);
+          }
+          workspace.trigger(event('pre-publish'), path);
+          const result = await baseApiUploadFile.apply(this, args);
+          workspace.trigger(event('post-publish'), path);
+          return result;
+        },
     });
-    this.addSettingTab(new SampleSettingTab(this.app, this));
-    this.registerCodeMirror((cm: CodeMirror.Editor) => {
-      console.log("codemirror", cm);
-    });
-    this.registerDomEvent(document, "click", (evt: MouseEvent) => {
-      console.log("click", evt);
-    });
-    this.registerInterval(
-      window.setInterval(() => console.log("setInterval"), 5 * 60 * 1000)
-    );
+    this.register(uninstall);
   }
-  onunload() {
-    console.log("unloading plugin");
-  }
-  async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-  }
-  async saveSettings() {
-    await this.saveData(this.settings);
-  }
-}
-class SampleModal extends Modal {
-  constructor(app: App) {
-    super(app);
-  }
-  onOpen() {
-    let { contentEl } = this;
-    contentEl.setText("Woah!");
-  }
-  onClose() {
-    let { contentEl } = this;
-    contentEl.empty();
-  }
-}
-class SampleSettingTab extends PluginSettingTab {
-  plugin: PublishHooks;
-  constructor(app: App, plugin: PublishHooks) {
-    super(app, plugin);
-    this.plugin = plugin;
-  }
-  display(): void {
-    let { containerEl } = this;
-    containerEl.empty();
-    containerEl.createEl("h2", { text: "Settings for my awesome plugin." });
-    new Setting(containerEl)
-      .setName("Setting #1")
-      .setDesc("It's a secret")
-      .addText((text) =>
-        text
-          .setPlaceholder("Enter your secret")
-          .setValue("")
-          .onChange(async (value) => {
-            console.log("Secret: " + value);
-            this.plugin.settings.mySetting = value;
-            await this.plugin.saveSettings();
-          })
-      );
+
+  async onload() {
+    this.app.workspace.onLayoutReady(this.whenReady.bind(this));
   }
 }
