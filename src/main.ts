@@ -30,9 +30,8 @@ export default class PublishHooks extends Plugin {
             // doUpdates
             // encodeData
             // upload
-          } else {
-            return baseApiRequest.apply(this, args);
-          }
+          } 
+          return baseApiRequest.apply(this, args);
         },
       apiUploadFile: (baseApiUploadFile) =>
         async function publishHooksPatched_apiUploadFile(this: unknown, ...args) {
